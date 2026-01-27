@@ -161,3 +161,39 @@ cython_debug/
 
 .ruff_cache/
 *.zip
+
+# Core latex/pdflatex auxiliary files
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+.*.lb
+
+# Intermediate documents
+*.dvi
+*.xdv
+*-converted-to.* # might exclude image files if using epstopdf etc.
+
+# Bibliography
+*.bbl
+*.blg
+*-blx.bib
+
+# Synctex
+*.synctex.gz*
+
+# latexmk
+*.fdb_latexmk
+
+# Editor and OS files
+*~
+*.swp
+.DS_Store
+.cache/
