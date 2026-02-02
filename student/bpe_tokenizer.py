@@ -52,21 +52,6 @@ def find_chunk_boundaries(
     # Make sure all boundaries are unique, but might be fewer than desired_num_chunks
     return sorted(set(chunk_boundaries))
 
-
-## Usage
-if __name__ == "__main__":
-    with open(..., "rb") as f:
-        num_processes = 4
-        boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
-
-        # The following is a serial implementation, but you can parallelize this
-        # by sending each start/end pair to a set of processes.
-        for start, end in zip(boundaries[:-1], boundaries[1:]):
-            f.seek(start)
-            chunk = f.read(end - start).decode("utf-8", errors="ignore")
-            # Run pre-tokenization on your chunk and store the counts for each pre-token
-
-
 _PRETOKEN_PATTERN = re.compile(
     r"'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"
 )
@@ -244,3 +229,14 @@ def train_bpe(
             next_id += 1
 
     return vocab, merges
+    
+    
+## Usage
+if __name__ == "__main__":
+    import pathlib
+    vocab, merges = train_bpe(
+        input_path=(pathlib.Path(__file__).resolve().parent.parent) / "tests" / "fixtures" / "tinystories_sample_5M.txt",
+        vocab_size=10000,
+        special_tokens=["<|endoftext|>"],
+    )
+    print(vocab)
