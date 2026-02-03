@@ -5,7 +5,7 @@ from pathlib import Path
 
 import psutil
 
-from student.bpe_tokenizer import train_bpe
+from bpe_tokenizer import train_bpe
 
 
 def _bytes_to_safe_str(b: bytes) -> str:
