@@ -1,7 +1,8 @@
 import multiprocessing as mp
 import os
+import time
 from collections import Counter, defaultdict
-from typing import BinaryIO
+from typing import BinaryIO, Iterable, Iterator
 
 import regex as re
 
@@ -91,6 +92,26 @@ def pretokenize_text(text: str, special_tokens: list[str]) -> Counter[tuple[byte
     return counter
 
 
+def iter_pretokenized_segments(text: str, special_tokens: list[str]) -> Iterator[tuple[str, bool]]:
+    """
+    Yield (segment, is_special) pairs in order, preserving special tokens as single segments.
+    """
+    special_split = build_special_split_pattern(special_tokens)
+    if special_split is None:
+        yield text, False
+        return
+
+    last_end = 0
+    for match in special_split.finditer(text):
+        start, end = match.span()
+        if start > last_end:
+            yield text[last_end:start], False
+        yield text[start:end], True
+        last_end = end
+    if last_end < len(text):
+        yield text[last_end:], False
+
+
 def pretokenize_chunk(
     input_path: str | os.PathLike,
     start: int,
@@ -130,12 +151,35 @@ def train_bpe(
     input_path: str | os.PathLike,
     vocab_size: int,
     special_tokens: list[str],
+    verbose: bool = False,
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+    """
+    Train a BPE tokenizer.
+    
+    Args:
+        input_path: Path to the input text file
+        vocab_size: Target vocabulary size
+        special_tokens: List of special tokens to add
+        verbose: If True, print timing information for profiling
+    
+    Returns:
+        Tuple of (vocab dict, merges list)
+    """
+    if verbose:
+        print("\n" + "="*80)
+        print("BPE TRAINING PROFILING")
+        print("="*80)
+        overall_start = time.time()
+    
     # Initialize base vocabulary with all single-byte tokens
     vocab: dict[int, bytes] = {i: bytes([i]) for i in range(256)}
     merges: list[tuple[bytes, bytes]] = []
 
     # Pre-tokenize the corpus (optionally in parallel)
+    if verbose:
+        section_start = time.time()
+        print("\n[1/4] Pre-tokenization...")
+    
     file_size = os.path.getsize(input_path)
     use_parallel = file_size >= 5_000_000 and (os.cpu_count() or 1) > 1 and len(special_tokens) > 0
 
@@ -154,9 +198,18 @@ def train_bpe(
             text = f.read()
         word_counts = pretokenize_text(text, special_tokens)
 
+    if verbose:
+        print(f"  ✓ Completed in {time.time() - section_start:.2f}s")
+        print(f"  ✓ Found {len(word_counts)} unique words")
+        print(f"  ✓ Total word occurrences: {sum(word_counts.values())}")
+
     # print(word_counts.most_common(10))
 
     # Build initial pair counts and index
+    if verbose:
+        section_start = time.time()
+        print("\n[2/4] Building initial pair counts...")
+    
     pair_counts: Counter[tuple[bytes, bytes]] = Counter()
     pair_to_words: dict[tuple[bytes, bytes], set[tuple[bytes, ...]]] = defaultdict(set)
     for word, freq in word_counts.items():
@@ -165,21 +218,49 @@ def train_bpe(
             pair_counts[pair] += freq * count
             pair_to_words[pair].add(word)
 
+    if verbose:
+        print(f"  ✓ Completed in {time.time() - section_start:.2f}s")
+        print(f"  ✓ Found {len(pair_counts)} unique pairs")
+
     # print(pair_counts.most_common(10))
     # print(pair_to_words)
 
     # Determine number of merges to perform (reserve space for special tokens)
     num_merges = max(0, vocab_size - len(vocab) - len(special_tokens))
 
-    for _ in range(num_merges):
+    if verbose:
+        section_start = time.time()
+        print(f"\n[3/4] Performing {num_merges} BPE merges...")
+        merge_times = []
+        find_best_times = []
+        update_times = []
+
+    for merge_idx in range(num_merges):
+        if verbose and merge_idx % 100 == 0 and merge_idx > 0:
+            avg_merge = sum(merge_times[-100:]) / len(merge_times[-100:])
+            avg_find = sum(find_best_times[-100:]) / len(find_best_times[-100:])
+            avg_update = sum(update_times[-100:]) / len(update_times[-100:])
+            print(f"  Progress: {merge_idx}/{num_merges} merges | "
+                  f"Avg time per merge: {avg_merge*1000:.2f}ms "
+                  f"(find: {avg_find*1000:.2f}ms, update: {avg_update*1000:.2f}ms)")
+        
         if not pair_counts:
             break
+        
+        if verbose:
+            find_start = time.time()
         best_pair = max(pair_counts.items(), key=lambda item: (item[1], item[0]))[0]
+        if verbose:
+            find_best_times.append(time.time() - find_start)
+        
         if pair_counts[best_pair] <= 0:
             break
 
         merges.append(best_pair)
 
+        if verbose:
+            update_start = time.time()
+        
         affected_words = list(pair_to_words.get(best_pair, set()))
         if not affected_words:
             break
@@ -214,8 +295,24 @@ def train_bpe(
             for pair, count in new_pairs.items():
                 pair_counts[pair] += freq * count
                 pair_to_words[pair].add(new_word)
+        
+        if verbose:
+            update_times.append(time.time() - update_start)
+            merge_times.append(time.time() - (find_start if 'find_start' in locals() else update_start))
+
+    if verbose:
+        print(f"  ✓ Completed in {time.time() - section_start:.2f}s")
+        print(f"  ✓ Performed {len(merges)} merges")
+        if merge_times:
+            print(f"  ✓ Avg time per merge: {sum(merge_times)/len(merge_times)*1000:.2f}ms")
+            print(f"  ✓ Avg time finding best pair: {sum(find_best_times)/len(find_best_times)*1000:.2f}ms")
+            print(f"  ✓ Avg time updating counts: {sum(update_times)/len(update_times)*1000:.2f}ms")
 
     # Add merged tokens to vocab
+    if verbose:
+        section_start = time.time()
+        print("\n[4/4] Building final vocabulary...")
+    
     next_id = len(vocab)
     for merge in merges:
         vocab[next_id] = merge[0] + merge[1]
@@ -228,15 +325,133 @@ def train_bpe(
             vocab[next_id] = token_bytes
             next_id += 1
 
+    if verbose:
+        print(f"  ✓ Completed in {time.time() - section_start:.2f}s")
+        print(f"  ✓ Final vocabulary size: {len(vocab)}")
+        print("="*80)
+        print(f"TOTAL TIME: {time.time() - overall_start:.2f}s")
+        print("="*80 + "\n")
+
     return vocab, merges
     
+
+class Tokenizer:
+    def __init__(self, vocab: dict[int, bytes], merges: list[tuple[bytes, bytes]], special_tokens: list[str] | None = None) -> None:
+        self.vocab = vocab
+        self.merges = merges
+        self.special_tokens = special_tokens
+        self.token_to_id = {v: k for k, v in vocab.items()}
+        self.merge_ranks = {pair: i for i, pair in enumerate(merges)}
+
+    @classmethod
+    def from_files(cls, vocab_filepath: str, merges_filepath: str, special_tokens: list[str] | None = None) -> "Tokenizer":
+        import json
+
+        with open(vocab_filepath, "r", encoding="utf-8") as f:
+            vocab_data = json.load(f)
+        vocab = {int(k): v.encode("latin-1") for k, v in vocab_data.items()}
+
+        merges: list[tuple[bytes, bytes]] = []
+        with open(merges_filepath, "r", encoding="utf-8") as f:
+            for line in f:
+                cleaned = line.strip()
+                if not cleaned:
+                    continue
+                parts = cleaned.split(" ", 1)
+                if len(parts) != 2:
+                    continue
+                a_str, b_str = parts
+                a_bytes = a_str.encode("latin-1")
+                b_bytes = b_str.encode("latin-1")
+                merges.append((a_bytes, b_bytes))
+
+        return cls(vocab, merges, special_tokens)
     
+    def encode(self, text: str) -> list[int]:
+        """
+        Encode text to token IDs using BPE.
+        
+        Step 1: Pre-tokenize the text into pre-tokens (word pieces)
+        Step 2: Apply the merges from training in order to each pre-token
+        Step 3: Convert final tokens to vocabulary IDs
+        
+        Args:
+            text: The text to encode
+            
+        Returns:
+            List of token IDs
+        """
+        tokens: list[int] = []
+        special_tokens = self.special_tokens or []
+
+        # Step 1: Pre-tokenize the text while preserving special tokens
+        for segment, is_special in iter_pretokenized_segments(text, special_tokens):
+            if not segment:
+                continue
+            if is_special:
+                token_id = self.token_to_id.get(segment.encode("utf-8"))
+                if token_id is not None:
+                    tokens.append(token_id)
+                continue
+
+            # Step 2: Apply merges in order to each pre-token from this segment
+            for match in _PRETOKEN_PATTERN.finditer(segment):
+                token = match.group(0)
+                token_bytes = token.encode("utf-8")
+                current_word = tuple(bytes([b]) for b in token_bytes)
+
+                for merge in self.merges:
+                    if len(current_word) < 2:
+                        break
+                    while True:
+                        new_word = merge_word(current_word, merge)
+                        if new_word == current_word:
+                            break
+                        current_word = new_word
+
+                # Step 3: Convert final tokens to IDs
+                for merged_token in current_word:
+                    token_id = self.token_to_id.get(merged_token)
+                    if token_id is not None:
+                        tokens.append(token_id)
+
+        return tokens
+    
+    def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
+        """
+        Encode an iterable of strings to token IDs.
+        
+        Args:
+            iterable: An iterable of strings
+            
+        Yields:
+            Token IDs one by one
+        """
+        for text in iterable:
+            token_ids = self.encode(text)
+            for token_id in token_ids:
+                yield token_id
+    
+    def decode(self, token_ids: list[int]) -> str:
+        """
+        Decode token IDs back to text.
+        
+        Args:
+            token_ids: List of token IDs
+            
+        Returns:
+            Decoded text
+        """
+        byte_chunks = [self.vocab[token_id] for token_id in token_ids if token_id in self.vocab]
+        byte_stream = b"".join(byte_chunks)
+        return byte_stream.decode("utf-8", errors="ignore")
+
 ## Usage
-if __name__ == "__main__":
-    import pathlib
-    vocab, merges = train_bpe(
-        input_path=(pathlib.Path(__file__).resolve().parent.parent) / "tests" / "fixtures" / "tinystories_sample_5M.txt",
-        vocab_size=10000,
-        special_tokens=["<|endoftext|>"],
-    )
-    print(vocab)
+# if __name__ == "__main__":
+#     import pathlib
+#     vocab, merges = train_bpe(
+#         input_path=(pathlib.Path(__file__).resolve().parent.parent) / "tests" / "fixtures" / "tinystories_sample_5M.txt",
+#         vocab_size=10000,
+#         special_tokens=["<|endoftext|>"],
+#     )
+#     print(vocab)

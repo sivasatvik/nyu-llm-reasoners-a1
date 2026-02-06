@@ -28,6 +28,7 @@ def main() -> None:
     parser.add_argument("--vocab-size", type=int, default=10_000)
     parser.add_argument("--special-token", action="append", default=["<|endoftext|>"])
     parser.add_argument("--out-dir", type=Path, default=Path("artifacts"))
+    parser.add_argument("--verbose", action="store_true", help="Enable detailed profiling output")
     args = parser.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -40,6 +41,7 @@ def main() -> None:
         input_path=str(args.input),
         vocab_size=args.vocab_size,
         special_tokens=args.special_token,
+        verbose=args.verbose,
     )
 
     end_time = time.time()

@@ -8,39 +8,48 @@
 \begin{document}
 
 \begin{enumerate}[start=2,label=\arabic*.]
-    \item Byte-Pair Encoding (BPE) Tokenizer
+    \item \textbf{Byte-Pair Encoding (BPE) Tokenizer}
         \begin{enumerate}[label=\arabic*.]
-            \item Understanding Unicode
+            \item \textbf{Understanding Unicode}
                 \begin{enumerate}[label=\alph*.]
                     \item \texttt{chr(0)} returns '\verb|b'\x00|''
                     \item \texttt{\_\_repr\_\_()} shows an escaped, unambiguous form whereas its printed representation outputs the character itself which is actual NULL character(invisible).
                     \item When we add it to text, it simply adds an invisible character at that position which may not be visually noticeable.
                 \end{enumerate}
-            \item Unicode Encodings
+            \item \textbf{Unicode Encodings}
                 \begin{enumerate}[label=\alph*.]
                     \item UTF-8 is preferred over UTF-16 or UTF-32 due to its superior compression, universal applicability without out of vocabulary errors, and native compability with byte-stream data.
                     \item If we give the input 牛, it breaks and gives an error "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe7 in position 0: unexpected end of data". This is due to the fact that the decoding is done byte by byte and when the encoded character is multi-byte, it fails to decode it properly.
                     \item  \verb|b'\xC3\x28|' is invalid in UTF-8 because 0xC3 indicates the start of a 2-byte character, but 0x28 is not a valid continuation byte.
                 \end{enumerate}
-            \item BPE Training on TinyStories
-                Training on the given tinystories dataset produces the following output:
-                \begin{lstlisting}
-(venv) sivasatvik@10-17-88-31 nyu-llm-reasoners-a1 % 
-time python student/train_bpe_tinystories.py 
---input ./data/TinyStoriesV2-GPT4-train.txt
-Elapsed (s): 61.72
-RSS (MB): 158.3
-Longest token length (bytes): 15
-Longest token (latin-1):  accomplishment
-python student/train_bpe_tinystories.py --input
-319.31s user
-14.65s system
-539% cpu
-1:01.86 total
-                \end{lstlisting}
-                It seems that the longest token is `accomplishment' with a length of 15 bytes. The memory usage is around 158.3 MB and the training took approximately 61.72 seconds. It makes sense that longer tokens are formed from frequently occurring sequences of characters in the dataset, and `accomplishment' might be a common word in the TinyStories dataset.
+            \item \textbf{BPE Training on TinyStories}
+                \begin{enumerate}[label=\alph*.]
+%                     \item Training on the given tinystories dataset produces the following output:
+%                         \begin{lstlisting}
+% (venv) sivasatvik@10-17-88-31 nyu-llm-reasoners-a1 % 
+% time python student/train_bpe_tinystories.py 
+% --input ./data/TinyStoriesV2-GPT4-train.txt
+% Elapsed (s): 61.72
+% RSS (MB): 158.3
+% Longest token length (bytes): 15
+% Longest token (latin-1):  accomplishment
+% python student/train_bpe_tinystories.py --input
+% 319.31s user
+% 14.65s system
+% 539% cpu
+% 1:01.86 total
+                        % \end{lstlisting}
+                    \item It seems that the longest token is `accomplishment' with a length of 15 bytes. The memory usage is around 158.3 MB and the training took approximately 61.72 seconds. It makes sense that longer tokens are formed from frequently occurring sequences of characters in the dataset, and `accomplishment' might be a common word in the TinyStories dataset.
+                    \item Pre-tokenization part took the most time (~40 seconds). Finding chunks and their word count seems to be the most time-consuming part of the process. Second highest is merging the tokens based on the pairs found (~20 seconds).
+                \end{enumerate}
+            \item \textbf{Experiments with tokenizers}
+                \begin{enumerate}[label=\alph*.]
+                    \item The tokenizer's compression ratio (bytes/token) is around 2.8609 in a sample of 10 documents from TinyStories dataset.
+                    \item The througput of the tokenizer is approximately 3000 bytes/second. To tokenize the Pile dataset (about 825 GB), it would take around 76,388 hours.
+                    \item uint16 is appropriate choice for encoding the token IDs since the vocabulary size is 10,000 which fits well within the range of uint16 (0 to $2^{16}-1 = 65535$).
+                \end{enumerate}
         \end{enumerate}
-    \item Transformer Language Model Architecture
+    \item \textbf{Transformer Language Model Architecture}
         \begin{enumerate}[label=\arabic*.]
             \item Subsection 1
                 \begin{enumerate}[label=\alph*.]
