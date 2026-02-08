@@ -51,18 +51,33 @@
         \end{enumerate}
     \item \textbf{Transformer Language Model Architecture}
         \begin{enumerate}[label=\arabic*.]
-            \item Subsection 1
+            \item Transformer LM resource accounting
                 \begin{enumerate}[label=\alph*.]
-                    \item a
-                    \item b
-                \end{enumerate}
-            \item Subsection 2
-                \begin{enumerate}[label=\alph*.]
-                    \item a
-                    \item b
-                    \item c
+                    \item
+                    \item
+                    \item
+                    \item
+                    \item
                 \end{enumerate}
         \end{enumerate}
+    \item \textbf{Training a Transformer LM}
+         \begin{enumerate}[label=\arabic*.]
+            \item \textbf{Tuning the learning rate}\\
+                With lr = 1e1, the loss keeps decaying properly. Inital iterations see a sharp drop in loss, and then it continues to decrease steadily and slowly.\\
+                With lr = 1e2, the loss keeps fluctuating and diverging. It starts with a sharp drop but then it increaes and decreases erratically, indicating that the model is not converging properly.\\
+                With lr = 1e3, the loss diverges immediately and keeps increasing without any sign of convergence.
+                % \begin{enumerate}[label=\alph*.]
+                %     \item a
+                % \end{enumerate}
+            \item \textbf{Resource accounting for training with AdamW}
+                \begin{enumerate}[label=\alph*.]
+                    \item
+                    \item
+                    \item
+                    \item
+                \end{enumerate}
+         \end{enumerate}
+    \item[6] \textbf{Generating text}
 \end{enumerate}
 
 \end{document}
