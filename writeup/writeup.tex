@@ -3,6 +3,7 @@
 \usepackage[margin=0.7in]{geometry}
 \usepackage{enumitem}
 \usepackage{listings}
+\usepackage{amsmath}
 
 
 \begin{document}
@@ -53,11 +54,92 @@
         \begin{enumerate}[label=\arabic*.]
             \item Transformer LM resource accounting
                 \begin{enumerate}[label=\alph*.]
-                    \item
-                    \item
-                    \item
-                    \item
-                    \item
+                    \item With the current implementation, GPT-2 XL has nearly 2,127,057,600 ($\approx$2.13B) trainable parameters. At 4 bytes (32 bit floating point) per parameter, this amounts to approximately 8.5 GB of memory just for model parameters.
+                    \item Calculation is as follows:
+                        \begin{itemize}
+                            \item \textbf{Per Transformer Block (L = 48 in total)}
+                                \begin{itemize}
+                                    \item \textbf{Attention Projections ($W_Q$, $W_K$, $W_V$)}: 3 matrix multiplications,
+                                    \begin{align*}
+                                    &= 3 * 2 * seq\_len * d\_model * d\_model \\
+                                    &= 3 * (2 * 1024 * 1600 * 1600) \\
+                                    &= \textbf{15,728,640,000 \text{ FLOPs}}
+                                    \end{align*}
+                                    \item \textbf{Attention Scores ($QK^T$)}: 1 matrix multiplication,
+                                    \begin{align*}
+                                    &= 2 * seq\_len^2 * num\_heads * (d\_model / num\_heads) \\
+                                    &= 2 * 1024^2 * 25 * (1600/25) \\
+                                    &= \textbf{3,355,443,200 \text{ FLOPs}}
+                                    \end{align*}
+                                    \item \textbf{Attention Output($ScoresV$)}: 1 matrix multiplication,
+                                    \begin{align*}
+                                    &= 2 * seq\_len^2 * num\_heads * (d\_model / num\_heads) \\
+                                    &= 2 * 1024^2 * 25 * (1600/25) \\
+                                    &= \textbf{3,355,443,200 \text{ FLOPs}}
+                                    \end{align*}
+                                    \item \textbf{Attention Output Projection($W_O$)}: 1 matrix multiplication,
+                                    \begin{align*}
+                                    &= 2 * seq\_len * d\_model^2 \\
+                                    &= 2 * 1024 * 1600^2 \\
+                                    &= \textbf{5,242,880,000 \text{ FLOPs}}
+                                    \end{align*}
+                                    \item \textbf{FFN($W_1$, $W_3$)}: 2 matrix multiplications,
+                                    \begin{align*}
+                                    &= 2 * (2 * seq\_len * d\_model * d\_ff) \\
+                                    &= 2 * 2 * 1024 * 1600 * 6400 \\
+                                    &= \textbf{41,943,040,000 \text{ FLOPs}}
+                                    \end{align*}
+                                    \item \textbf{FFN($W_2$)}: 1 matrix multiplication,
+                                    \begin{align*}
+                                    &= 2 * seq\_len * d\_ff * d\_model \\
+                                    &= 2 * 1024 * 6400 * 1600 \\
+                                    &= \textbf{20,971,520,000 \text{ FLOPs}}
+                                    \end{align*}
+                                \end{itemize}
+                                So for all blocks combined, the total FLOPs is:
+                                \begin{align*}
+                                &= 48 * (15,728,640,000 + 3,355,443,200 + 3,355,443,200 + 5,242,880,000 \\
+                                &+ 41,943,040,000 + 20,971,520,000) \\
+                                &= 48 * 90,596,486,400 \\
+                                &= \textbf{4,348,631,347,200 \text{ FLOPs}}
+                                \end{align*}
+                            \item \textbf{Final LayerNorm and Output Projection}: 1 matrix multiplication,
+                            \begin{align*}
+                            &= 2 * seq\_len * d\_model * vocab\_size \\
+                            &= 2 * 1024 * 1600 * 50257 \\
+                            &= \textbf{164,682,137,600 \text{ FLOPs}}
+                            \end{align*}
+                            \\ So the total FLOPs are: 
+                                \begin{align*}
+                                &= 4,348,631,347,200\text{ (Blocks) } + 164,682,137,600\text{ (Head)} \\
+                                &= \textbf{4,513,313,484,800 \text{ FLOPs}}\\
+                                &\boxed{\approx \textbf{4.51 \text{ TFLOPs}}}
+                                \end{align*}
+                        \end{itemize}
+                    \item Most of the FLOPs occur within the \textbf{Transformer blocks} (about 96.3\% of total FLOPs) and within each block, the \textbf{FFN layers} contribute about 70\% of the block's FLOPs (62.9 GFLOPs) compared to the attention mechanism (27.7 GFLOPs).
+                    \item The breakdown of the FLOPs for each model is as follows:
+                        \begin{itemize}
+                            \item \textbf{GPT-2 Small (L = 12, d\_model = 768, num\_heads = 12)}
+                            \begin{itemize}
+                                \item Blocks: $\mathbf{2.7 * 10^{11}}$ \textbf{FLOPs} (77.7\% of total)
+                                \item Final LayerNorm and Output Projection: $\mathbf{0.79 * 10^{11}}$ \textbf{FLOPs} (22.3\% of total)
+                                \item Total: Approximately \textbf{0.32 TFLOPs} per forward pass.
+                            \end{itemize}
+                            \item \textbf{GPT-2 Medium (L = 24, d\_model = 1024, num\_heads = 16)}
+                            \begin{itemize}
+                                \item Blocks: $\mathbf{9.27 * 10^{11}}$ \textbf{FLOPs} (90\% of total)
+                                \item Final LayerNorm and Output Projection: $\mathbf{1.05 * 10^{11}}$ \textbf{FLOPs} (10\% of total)
+                                \item Total: Approximately \textbf{1.03 TFLOPs} per forward pass.
+                            \end{itemize}
+                            \item \textbf{GPT-2 Large (L = 36, d\_model = 1280, num\_heads = 20)}
+                            \begin{itemize}
+                                \item Blocks: $\mathbf{2.1 * 10^{12}}$ \textbf{FLOPs} (94\% of total)
+                                \item Final LayerNorm and Output Projection: $\mathbf{1.32 * 10^{11}}$ \textbf{FLOPs} (6\% of total)
+                                \item Total: Approximately \textbf{2.23 TFLOPs} per forward pass.
+                            \end{itemize}
+                        \end{itemize}
+                    As the model size increases, the proportional FLOPs cost changes toward the \textbf{Transformer blocks}, especially the FFN layers, which dominate the computational cost in larger models. The final output projection becomes relatively less expensive as the model size increases.
+                    \item Increasing the context\_length from 1024 to 16,384 (a 16x increase) results in a significant rise in total FLOPS, approximately \textbf{33.2x} (from 4.51 TFLOPs to around 149.8 TFLOPs). As the context length grows, the contribution to the FLOPS shifts from the FFN layers to the attention score calculation. This shift becomes more pronounced at longer context lengths, as \textbf{attention score calculations} become the dominant cost due to their quadratic scaling with sequence length. Consequently, attention score computations grow from \textbf{7\%} to \textbf{55\%} of total FLOPS, becoming the new bottleneck.
                 \end{enumerate}
         \end{enumerate}
     \item \textbf{Training a Transformer LM}
