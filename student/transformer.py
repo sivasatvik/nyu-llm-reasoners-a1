@@ -95,6 +95,19 @@ class SwiGLU(nn.Module):
         h = swiglu(w1x, w3x)
         return self.linear2(h)
 
+
+class FFNSiLU(nn.Module):
+    def __init__(self, d_model: int, d_ff: int, device=None, dtype=None):
+        super().__init__()
+        self.d_model = d_model
+        self.device = device if device is not None else torch.device("cpu")
+        self.dtype = dtype if dtype is not None else torch.float32
+        self.linear1 = Linear(d_model, d_ff, device=self.device, dtype=self.dtype)
+        self.linear2 = Linear(d_ff, d_model, device=self.device, dtype=self.dtype)
+
+    def forward(self, x: Float[torch.Tensor, "... d_model"]) -> Float[torch.Tensor, "... d_model"]:
+        return self.linear2(silu(self.linear1(x)))
+
 class RotaryPositionalEmbedding(nn.Module):
     def __init__(self, theta: float, d_k: int, max_seq_len: int, device=None):
         super().__init__()
@@ -237,24 +250,47 @@ class TransformerBlock(nn.Module):
         max_seq_len: int,
         rope_theta: float = 10000.0,
         use_rope: bool = True,
+        norm_type: str = "pre",
+        ffn_type: str = "swiglu",
         device=None,
         dtype=None
     ) -> None:
         super().__init__()
+        self.norm_type = norm_type
+        if norm_type not in {"pre", "post", "none"}:
+            raise ValueError(f"Invalid norm_type: {norm_type}")
 
-        self.norm1 = RMSNorm(d_model, device=device, dtype=dtype)
         self.attn = CasualMultiHeadSelfAttention(d_model, num_heads, max_seq_len, rope_theta, use_rope, device=device, dtype=dtype)
 
-        self.norm2 = RMSNorm(d_model, device=device, dtype=dtype)
-        self.ff = SwiGLU(d_model, d_ff, device=device, dtype=dtype)
+        self.norm1 = RMSNorm(d_model, device=device, dtype=dtype) if norm_type != "none" else None
+        self.norm2 = RMSNorm(d_model, device=device, dtype=dtype) if norm_type != "none" else None
+
+        if ffn_type == "swiglu":
+            self.ff = SwiGLU(d_model, d_ff, device=device, dtype=dtype)
+        elif ffn_type == "silu":
+            self.ff = FFNSiLU(d_model, d_ff, device=device, dtype=dtype)
+        else:
+            raise ValueError(f"Invalid ffn_type: {ffn_type}")
 
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor | None = None) -> torch.Tensor:
-        batch_size, seq_len, _ = x.shape
+        if self.norm_type == "pre":
+            attention = self.attn(self.norm1(x), token_positions=token_positions)
+            x = x + attention
+            ff_output = self.ff(self.norm2(x))
+            x = x + ff_output
+            return x
 
-        attention = self.attn(self.norm1(x), token_positions=token_positions)
+        if self.norm_type == "post":
+            attention = self.attn(x, token_positions=token_positions)
+            x = self.norm1(x + attention)
+            ff_output = self.ff(x)
+            x = self.norm2(x + ff_output)
+            return x
+
+        # norm_type == "none"
+        attention = self.attn(x, token_positions=token_positions)
         x = x + attention
-
-        ff_output = self.ff(self.norm2(x))
+        ff_output = self.ff(x)
         x = x + ff_output
         return x
 
@@ -269,6 +305,8 @@ class TransformerLanguageModel(nn.Module):
         d_ff: int,
         rope_theta: float = 10000.0,
         use_rope: bool = True,
+        norm_type: str = "pre",
+        ffn_type: str = "swiglu",
         device=None,
         dtype=None
     ) -> None:
@@ -282,12 +320,14 @@ class TransformerLanguageModel(nn.Module):
                 max_seq_len=context_length,
                 rope_theta=rope_theta,
                 use_rope=use_rope,
+                norm_type=norm_type,
+                ffn_type=ffn_type,
                 device=device,
                 dtype=dtype)
             for _ in range(num_layers)
         ])
 
-        self.ln_final = RMSNorm(d_model, device=device, dtype=dtype)
+        self.ln_final = RMSNorm(d_model, device=device, dtype=dtype) if norm_type != "none" else None
         self.lm_head = Linear(d_model, vocab_size, device=device, dtype=dtype)
 
         self.context_length = context_length
@@ -304,7 +344,8 @@ class TransformerLanguageModel(nn.Module):
         for layer in self.blocks:
             x = layer(x, token_positions=positions) # (batch, seq_len, d_model)
 
-        x = self.ln_final(x) # (batch, seq_len, d_model)
+        if self.ln_final is not None:
+            x = self.ln_final(x) # (batch, seq_len, d_model)
 
         logits = self.lm_head(x) # (batch, seq_len, vocab_size)
         return logits

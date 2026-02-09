@@ -4,6 +4,7 @@
 \usepackage{enumitem}
 \usepackage{listings}
 \usepackage{amsmath}
+\usepackage{mathtools}
 
 
 \begin{document}
@@ -153,13 +154,99 @@
                 % \end{enumerate}
             \item \textbf{Resource accounting for training with AdamW}
                 \begin{enumerate}[label=\alph*.]
-                    \item
-                    \item
-                    \item
-                    \item
+                    \item Let \\$B=batch\_size,\\T=context\_length,\\D=d\_model,\\H=num\_heads,\\V=vocab\_size,\\N=num\_layers,\\d_{ff}=4D$
+                        \begin{itemize}
+                            \item \textbf{Parameters}:
+                                \begin{itemize}
+                                    \item \textbf{Embeddgings}: Input ($\mathbf{V \times D}$) + Position ($\mathbf{T \times D}$)
+                                    \item \textbf{Transformer Blocks}: For each of the $\mathbf{N}$ blocks, we have:
+                                        \begin{itemize}
+                                            \item Attention Projections ($W_Q$, $W_K$, $W_V$, $W_O$): \textbf{4} matrices of size ($\mathbf{D \times D}$)
+                                            \item FFN ($W_1$, $W_2$, $W_3$): \textbf{3} matrices of size ($\mathbf{D \times d_{ff}}$) and ($\mathbf{d_{ff} \times D}$)
+                                            \item \textbf{LayerNorms}: \textbf{2} RMSNorms of size ($\mathbf{D}$)
+                                        \end{itemize}
+                                    \item \textbf{Final Layers}: Final RMSNorm ($\mathbf{D}$) and Output Projection ($\mathbf{D \times V}$)
+                                \end{itemize}
+                                So the total memory for parameters ($\mathbf{N_{params}}$) is:
+                                \begin{align*}
+                                &\mathbf{N_{params}} = (\mathbf{V \times D}) + (\mathbf{T \times D}) + \mathbf{N * [4 * (D^2) + 3 * (D \times d_{ff}) + 2 * D]} + (\mathbf{D} + \mathbf{D \times V}) \\
+                                \Aboxed{&\mathbf{N_{params}} = \mathbf{2(VD) + (TD)}
+                                + \mathbf{N * [16(D^2) + 2(D)] + (D)}}\\
+                                \Aboxed{&\mathbf{Memory_{params}} = \mathbf{N_{params} * 4 \textbf{ bytes}}}
+                                \end{align*}
+                            \item \textbf{Gradients}: We store one gradient value for every parameter, so
+                                \begin{align*}
+                                \Aboxed{&\mathbf{Memory_{grads}} = \mathbf{N_{params} * 4 \textbf{ bytes}}}
+                                \end{align*}
+                            \item \textbf{Optimizer State}: AdamW maintains two additional values (momentum and variance) for each parameter, so
+                                \begin{align*}
+                                \Aboxed{&\mathbf{Memory_{optimizer}} = \mathbf{N_{params} * 2 * 4 \textbf{ bytes}}}
+                                \end{align*}
+                            \item \textbf{Activations}:
+                                \begin{itemize}
+                                    \item \textbf{Transformer Block}:
+                                        \begin{itemize}
+                                            \item RMSNorm1 Input: $\mathbf{B \times T \times D}$
+                                            \item QKV Projections (Input/Output): $\mathbf{B \times T \times D}$ (Input) + $\mathbf{3 \times B \times T \times D}$ (Output)
+                                            \item $Q^{T}K$ Scores \& Softmax (Probs): $\mathbf{2 \times B \times H \times T \times T}$
+                                            \item Weighted Sum (Context): $\mathbf{B \times T \times D}$
+                                            \item Attention Output Projection: $\mathbf{B \times T \times D}$
+                                            \item RMSNorm2 Input: $\mathbf{B \times T \times D}$
+                                            \item FFN W1 Output: $\mathbf{B \times T \times d_{ff}}$
+                                            \item FFN W2(SiLU) Output: $\mathbf{B \times d_{ff} \times T}$
+                                            \item FFN W3 Output: $\mathbf{B \times T \times d_{ff}}$
+                                        \end{itemize}
+                                        In total, the activations for one block are $\mathbf{20(BTD) + 2(BHT^2)}$.
+                                    \item \textbf{Final Layers}: Final Norm Input: $\mathbf{B \times T \times D}$, Output Projection (logits): $\mathbf{B \times T \times V}$
+                                    So the total memory for activations ($\mathbf{N_{activations}}$) is:
+                                    \begin{align*}
+                                    &\mathbf{N_{activations}} = \mathbf{N * [20(BTD) + 2(BHT^2)]} + \mathbf{BTD} + \mathbf{BTV} \\
+                                    \Aboxed{&\mathbf{Memory_{activations}} = \mathbf{N_{activations} * 4 \textbf{ bytes}}}
+                                    \end{align*}
+                                \end{itemize}
+                            
+                        \end{itemize}
+                    \textbf{Total Peak Memory}: 
+                    \begin{align*}
+                        \mathbf{Memory_{total}} &= \mathbf{Memory_{params}} + \mathbf{Memory_{grads}} + \mathbf{Memory_{optimizer}} + \mathbf{Memory_{activations}}\\
+                        \mathbf{Memory_{total}} &= \mathbf{N_{params} * 4} + \mathbf{N_{params} * 4} + \mathbf{N_{params} * 8} + \mathbf{N_{activations} * 4}\\
+                        \Aboxed{\mathbf{Memory_{total}} &= \mathbf{16 * N_{params} + 4 * N_{activations} \textbf{ bytes}}}
+                    \end{align*}
+                    \item For GPT-2 XL model, we have
+                    \\$B=batch\_size,\\T=1024,\\D=1600,\\H=25,\\V=50257,\\N=48,\\d_{ff}=6400$
+                        \begin{itemize}
+                            \item \textbf{Parameters}: $\mathbf{N_{params}} = 2(VD) + (TD) + N * [16(D^2) + 2(D)] + D \approx 2.13B$ parameters, which amounts to approximately \textbf{8.5 GB} of memory (4 bytes/parameter).
+                            \item \textbf{Gradients}: Same as parameters, so approximately \textbf{8.5 GB} of memory.
+                            \item \textbf{Optimizer State}: 2 additional values per parameter, so approximately \textbf{17 GB} of memory.
+                            \item \textbf{Activations}: $\mathbf{N_{activations}} = N * [20(BTD) + 2(BHT^2)] + BTD + BTV $\\Taking B out of the equation, we have\\$\mathbf{N_{activations}} = B * [N * (20TD + 2HT^2) + TD + TV]$\\For GPT-2 XL, this is approximately $\mathbf{B * 4.1B}$ activations, which amounts to approximately \textbf{16.4 GB * B} of memory.
+                        \end{itemize}
+                    So the required expression:
+                    \begin{align*}
+                        \Aboxed{\mathbf{Memory_{total} (GB)} &= \mathbf{16.4 \cdot B + 34}}\\
+                    \end{align*}
+                    For this to fit in 80 GB memory, we need batch\_size $\mathbf{B \leq 2.8}$, so the maximum batch size we can use is \textbf{2}.
+                    \item \begin{align*}
+                        \Aboxed{\mathbf{FLOPs_{AdamW}} &\approx \mathbf{15 \times N_{params}}}
+                    \end{align*}
+                    \textbf{Justification}: AdamW performs element-wise operations on the parameters. For each parameter, the update involves:
+                    \begin{itemize}
+                        \item Updating first moment $m$: \textbf{3 operations} (mul, mul, add).
+                        \item Updating second moment $v$: \textbf{4 operations} (mul, mul, mul, add).
+                        \item Parameter update $\theta$: \textbf{8 operations} (sqrt, add, div, mul, sub, mul, mul, sub).
+                    \end{itemize}
+                    Total is around 15 FLOPs per parameter. 
+                    \item \begin{itemize}
+                        \item \textbf{Total Training FLOPs}: $400k \times B \times 6 \times N_{params}$. Here 6 comes from 2 forward passes and 4 for backward passes.\\
+                        Total FLOPs = $400k \times 1024 \times 6 \times 2.13B \approx \mathbf{5.2 \times 10^{18} \text{ FLOPs}}$.
+                        \item \textbf{Hardware Throughput}: Peak throughput = 19.5 teraFLOPs/s. With 50\% MFU, effective throughput = 9.75 teraFLOPs/s.
+                        \item \textbf{Total Training Time}: $\frac{5.2 \times 10^{18} \text{ FLOPs}}{9.75 \times 10^{12} \text{ FLOPs/s}} \approx \mathbf{533,333 \text{ seconds}} \approx \mathbf{148.15 \text{ hours}} \approx \boxed{\mathbf{6.17 \text{ days}}}$.
+                    \end{itemize}
                 \end{enumerate}
          \end{enumerate}
     \item[6] \textbf{Generating text}
+        \begin{itemize}
+            \item The decoding/generation script lives at \texttt{student/generate.py}.
+        \end{itemize}
 \end{enumerate}
 
 \end{document}
