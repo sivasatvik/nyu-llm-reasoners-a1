@@ -342,6 +342,7 @@ class Tokenizer:
         self.special_tokens = special_tokens
         self.token_to_id = {v: k for k, v in vocab.items()}
         self.merge_ranks = {pair: i for i, pair in enumerate(merges)}
+        self._encode_cache: dict[str, list[int]] = {}
 
     @classmethod
     def from_files(cls, vocab_filepath: str, merges_filepath: str, special_tokens: list[str] | None = None) -> "Tokenizer":
@@ -384,6 +385,36 @@ class Tokenizer:
         tokens: list[int] = []
         special_tokens = self.special_tokens or []
 
+        def bpe_encode_token(token: str) -> list[int]:
+            cached = self._encode_cache.get(token)
+            if cached is not None:
+                return cached
+
+            token_bytes = token.encode("utf-8")
+            word = tuple(bytes([b]) for b in token_bytes)
+
+            while True:
+                pairs = pairs_in_word(word)
+                if not pairs:
+                    break
+                best_pair = min(
+                    (pair for pair in pairs if pair in self.merge_ranks),
+                    key=lambda pair: self.merge_ranks[pair],
+                    default=None,
+                )
+                if best_pair is None:
+                    break
+                word = merge_word(word, best_pair)
+
+            encoded: list[int] = []
+            for tok in word:
+                token_id = self.token_to_id.get(tok)
+                if token_id is not None:
+                    encoded.append(token_id)
+
+            self._encode_cache[token] = encoded
+            return encoded
+
         # Step 1: Pre-tokenize the text while preserving special tokens
         for segment, is_special in iter_pretokenized_segments(text, special_tokens):
             if not segment:
@@ -394,26 +425,9 @@ class Tokenizer:
                     tokens.append(token_id)
                 continue
 
-            # Step 2: Apply merges in order to each pre-token from this segment
             for match in _PRETOKEN_PATTERN.finditer(segment):
                 token = match.group(0)
-                token_bytes = token.encode("utf-8")
-                current_word = tuple(bytes([b]) for b in token_bytes)
-
-                for merge in self.merges:
-                    if len(current_word) < 2:
-                        break
-                    while True:
-                        new_word = merge_word(current_word, merge)
-                        if new_word == current_word:
-                            break
-                        current_word = new_word
-
-                # Step 3: Convert final tokens to IDs
-                for merged_token in current_word:
-                    token_id = self.token_to_id.get(merged_token)
-                    if token_id is not None:
-                        tokens.append(token_id)
+                tokens.extend(bpe_encode_token(token))
 
         return tokens
     

@@ -129,8 +129,17 @@ class RotaryPositionalEmbedding(nn.Module):
     ) -> Float[torch.Tensor, "... seq_len d_k"]:
         if x.size(-1) != self.d_k:
             raise ValueError(f"Last dimension of input must be {self.d_k}, but got {x.size(-1)}.")
+        if token_positions.ndim == 1 and x.ndim > 2:
+            token_positions = token_positions.view((1,) * (x.ndim - 2) + (token_positions.shape[0],))
+        elif token_positions.ndim == x.ndim - 2:
+            token_positions = token_positions.unsqueeze(1)
+
         cos = self.cos_cached[token_positions]
         sin = self.sin_cached[token_positions]
+
+        if cos.ndim == x.ndim - 1:
+            cos = cos.unsqueeze(1)
+            sin = sin.unsqueeze(1)
 
         # Split the last dimension into even and odd parts
         x_even = x[..., ::2]
