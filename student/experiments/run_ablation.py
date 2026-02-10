@@ -34,7 +34,7 @@ def main() -> None:
     args = parser.parse_args()
 
     base = [
-        "python", "-m", "train_lm",
+        "python", "-m", "student.train_lm",
         "--train-data", str(args.train_data),
         "--val-data", str(args.val_data),
         "--vocab-size", str(args.vocab_size),
@@ -57,8 +57,9 @@ def main() -> None:
     # Base (pre-norm, RoPE, SwiGLU)
     run(base + ["--run-name", "base_pre_rope_swiglu", "--norm-type", "pre", "--ffn-type", "swiglu", "--use-rope"])
 
-    # Remove RMSNorm
-    run(base + ["--run-name", "no_norm", "--norm-type", "none", "--ffn-type", "swiglu", "--use-rope"])
+    # Remove RMSNorm - test varying learning rates
+    for lr in [1e-4, 3e-4, 1e-3, 3e-3]:
+        run(base + ["--run-name", f"no_norm_lr{lr}", "--norm-type", "none", "--ffn-type", "swiglu", "--use-rope", "--lr", str(lr)])
 
     # Post-norm
     run(base + ["--run-name", "post_norm", "--norm-type", "post", "--ffn-type", "swiglu", "--use-rope"])

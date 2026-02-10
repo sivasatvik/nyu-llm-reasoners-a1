@@ -73,11 +73,11 @@ def main() -> None:
     parser.add_argument("--prompt", type=str, required=True)
 
     parser.add_argument("--vocab-size", type=int, required=True)
-    parser.add_argument("--context-length", type=int, default=1024)
-    parser.add_argument("--num-layers", type=int, default=12)
-    parser.add_argument("--d-model", type=int, default=768)
-    parser.add_argument("--num-heads", type=int, default=12)
-    parser.add_argument("--d-ff", type=int, default=None)
+    parser.add_argument("--context-length", type=int, default=256)
+    parser.add_argument("--num-layers", type=int, default=4)
+    parser.add_argument("--d-model", type=int, default=512)
+    parser.add_argument("--num-heads", type=int, default=16)
+    parser.add_argument("--d-ff", type=int, default=1344)
     parser.add_argument("--rope-theta", type=float, default=10000.0)
     parser.add_argument("--norm-type", type=str, default="pre", choices=["pre", "post", "none"])
     parser.add_argument("--ffn-type", type=str, default="swiglu", choices=["swiglu", "silu"])
@@ -116,7 +116,7 @@ def main() -> None:
     ).to(args.device)
 
     if args.checkpoint:
-        checkpoint = torch.load(args.checkpoint, weights_only=False)
+        checkpoint = torch.load(args.checkpoint, weights_only=False, map_location=args.device)
         model.load_state_dict(checkpoint["model_state"])
 
     out = generate(
