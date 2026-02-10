@@ -31,7 +31,7 @@ def main() -> None:
     for bs in args.batch_sizes:
         run_name = f"bs_{bs}"
         cmd = [
-            "python", "-m", "train_lm",
+            "python", "-m", "student.train_lm",
             "--train-data", str(args.train_data),
             "--val-data", str(args.val_data),
             "--vocab-size", str(args.vocab_size),
