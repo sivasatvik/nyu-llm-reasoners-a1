@@ -52,7 +52,7 @@ $PY -m student.experiments.sweep_batch_sizes \
   --eval-iters "$EVAL_ITERS" \
   --eval-interval "$EVAL_INTERVAL" \
   --log-interval "$LOG_INTERVAL" \
-  --lr 3e-4 \
+  --lr 1e-3 \
   --device "$DEVICE"
 
 # Ablations: no RMSNorm, post-norm, NoPE, SiLU FFN
@@ -70,7 +70,7 @@ $PY -m student.experiments.run_ablation \
   --eval-iters "$EVAL_ITERS" \
   --eval-interval "$EVAL_INTERVAL" \
   --log-interval "$LOG_INTERVAL" \
-  --lr 3e-4 \
+  --lr 1e-3 \
   --device "$DEVICE"
 
 echo "All GPU experiment sweeps completed. Logs are in student/experiments/logs."

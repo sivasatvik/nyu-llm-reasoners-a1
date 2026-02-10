@@ -24,7 +24,7 @@ def main() -> None:
     parser.add_argument("--log-dir", type=Path, default=Path("experiments/logs/bs_sweep"))
     parser.add_argument("--checkpoint-dir", type=Path, default=Path("experiments/checkpoints/bs_sweep"))
     parser.add_argument("--device", type=str, default="cpu")
-    parser.add_argument("--batch-sizes", type=int, nargs="+", default=[1, 8, 32, 64, 128])
+    parser.add_argument("--batch-sizes", type=int, nargs="+", default=[1, 8, 32, 64, 128, 256, 448])  # GPU memory limit of 40GB will be around 460 batch size
     parser.add_argument("--lr", type=float, default=3e-4)
     args = parser.parse_args()
 

@@ -21,8 +21,8 @@ EVAL_INTERVAL=200
 LOG_INTERVAL=50
 DEVICE=cuda
 
-# Learning rate sweep
-$PY -m student.experiments.sweep_learning_rates \
+# Batch size sweep (adjust --lr if needed)
+$PY -m student.experiments.sweep_batch_sizes \
   --train-data "$TRAIN" \
   --val-data "$VAL" \
   --vocab-size "$VOCAB_SIZE" \
@@ -31,9 +31,9 @@ $PY -m student.experiments.sweep_learning_rates \
   --d-model "$DMODEL" \
   --num-heads "$HEADS" \
   --d-ff "$DFF" \
-  --batch-size "$BATCH" \
   --max-iters "$MAX_ITERS" \
   --eval-iters "$EVAL_ITERS" \
   --eval-interval "$EVAL_INTERVAL" \
   --log-interval "$LOG_INTERVAL" \
+  --lr 1e-3 \
   --device "$DEVICE"
