@@ -196,9 +196,13 @@ def main() -> None:
                 wandb_run.log({"val/loss": val_loss}, step=it + 1)
 
         if args.checkpoint_path is not None and (it + 1) % args.ckpt_interval == 0:
+            # Create checkpoint path if it doesnt exist
+            args.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
             save_checkpoint(model, optimizer, it + 1, args.checkpoint_path)
 
     if args.checkpoint_path is not None:
+        # Create checkpoint path if it doesnt exist
+        args.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
         save_checkpoint(model, optimizer, args.max_iters, args.checkpoint_path)
 
     if wandb_run is not None:
