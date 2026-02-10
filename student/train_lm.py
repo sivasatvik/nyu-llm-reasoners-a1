@@ -183,6 +183,7 @@ def main() -> None:
             print(msg)
             if train_writer is not None:
                 train_writer.writerow([it + 1, time.time() - start_time, loss.item(), lr, tok_per_s])
+                train_file.flush()
             if wandb_run is not None:
                 wandb_run.log({"train/loss": loss.item(), "lr": lr, "tok_per_s": tok_per_s}, step=it + 1)
             t0 = time.time()
@@ -192,6 +193,7 @@ def main() -> None:
             print(f"eval @ {it+1}: val_loss {val_loss:.4f}")
             if val_writer is not None:
                 val_writer.writerow([it + 1, time.time() - start_time, val_loss])
+                val_file.flush()
             if wandb_run is not None:
                 wandb_run.log({"val/loss": val_loss}, step=it + 1)
 
