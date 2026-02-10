@@ -362,8 +362,13 @@ class Tokenizer:
                 if len(parts) != 2:
                     continue
                 a_str, b_str = parts
-                a_bytes = a_str.encode("latin-1")
-                b_bytes = b_str.encode("latin-1")
+                try:
+                    a_bytes = bytes.fromhex(a_str)
+                    b_bytes = bytes.fromhex(b_str)
+                except ValueError:
+                    # Fallback for old latin-1 format
+                    a_bytes = a_str.encode("latin-1")
+                    b_bytes = b_str.encode("latin-1")
                 merges.append((a_bytes, b_bytes))
 
         return cls(vocab, merges, special_tokens)
@@ -411,6 +416,10 @@ class Tokenizer:
                 token_id = self.token_to_id.get(tok)
                 if token_id is not None:
                     encoded.append(token_id)
+                else:
+                    # Fallback: encode missing merged tokens as individual bytes
+                    for byte in tok:
+                        encoded.append(byte)
 
             self._encode_cache[token] = encoded
             return encoded

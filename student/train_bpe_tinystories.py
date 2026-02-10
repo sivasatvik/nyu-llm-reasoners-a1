@@ -18,7 +18,7 @@ def save_vocab(path: Path, vocab: dict[int, bytes]) -> None:
 
 
 def save_merges(path: Path, merges: list[tuple[bytes, bytes]]) -> None:
-    lines = [f"{_bytes_to_safe_str(a)} {_bytes_to_safe_str(b)}" for a, b in merges]
+    lines = [f"{a.hex()} {b.hex()}" for a, b in merges]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

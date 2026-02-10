@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import torch
@@ -62,7 +63,19 @@ def generate(
             if eos_id is not None and next_token.item() == eos_id:
                 break
 
-        return tokenizer.decode(ids.squeeze(0).tolist())
+        token_ids = ids.squeeze(0).tolist()
+        # Debug: print token ID stats
+        print(f"\n[DEBUG] Generated {len(token_ids)} tokens", file=sys.stderr)
+        print(f"[DEBUG] Token ID range: {min(token_ids)} to {max(token_ids)}", file=sys.stderr)
+        print(f"[DEBUG] Vocab size: {len(tokenizer.vocab)}", file=sys.stderr)
+        print(f"[DEBUG] First 20 token IDs: {token_ids[:20]}", file=sys.stderr)
+
+        # Check for out-of-vocab tokens
+        oov = [tid for tid in token_ids if tid not in tokenizer.vocab]
+        if oov:
+            print(f"[DEBUG] WARNING: {len(oov)} out-of-vocab token IDs: {oov[:10]}...", file=sys.stderr)
+
+        return tokenizer.decode(token_ids)
 
 
 def main() -> None:
