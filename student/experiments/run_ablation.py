@@ -58,7 +58,7 @@ def main() -> None:
     run(base + ["--run-name", "base_pre_rope_swiglu", "--norm-type", "pre", "--ffn-type", "swiglu", "--use-rope"])
 
     # Remove RMSNorm - test varying learning rates
-    for lr in [1e-4, 3e-4, 1e-3, 3e-3]:
+    for lr in [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]:
         run(base + ["--run-name", f"no_norm_lr{lr}", "--norm-type", "none", "--ffn-type", "swiglu", "--use-rope", "--lr", str(lr)])
 
     # Post-norm
