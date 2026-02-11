@@ -25,7 +25,7 @@ def main() -> None:
     parser.add_argument("--log-dir", type=Path, default=Path("experiments/logs/lr_sweep"))
     parser.add_argument("--checkpoint-dir", type=Path, default=Path("experiments/checkpoints/lr_sweep"))
     parser.add_argument("--device", type=str, default="cpu")
-    parser.add_argument("--lrs", type=float, nargs="+", default=[1e-5, 1e-4, 1e-3, 1e-2, 1e-1])
+    parser.add_argument("--lrs", type=float, nargs="+", default=[1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0])
     args = parser.parse_args()
 
     for lr in args.lrs:
