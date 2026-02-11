@@ -251,13 +251,13 @@
         \begin{enumerate}[label=\arabic*.]
             \item \textbf{Tune the learning rate}
                 \begin{itemize}
-                    \item[a] I employed the stratery to sweep through the learning rates geometrically (1e-5, 1e-4, 1e-3, 1e-2, 1e-1) and observed the loss curves to identify the optimal learning rate for training. The learning rates are given in the following plot:
+                    \item[a.] I employed the stratery to sweep through the learning rates geometrically (1e-5, 1e-4, 1e-3, 1e-2, 1e-1) and observed the loss curves to identify the optimal learning rate for training. The learning rates are given in the following plot:
                     \begin{center}
                         \includegraphics[width=0.75\textwidth]{{../learning curves/lr_curve.png}}
-                        
+
                         \textit{Figure: Loss curves for different learning rates.}
                     \end{center}
-                    \item[b] Based on the loss curves, the optimal learning rate for training the model is \textbf{1e-3}, as it shows a steady decrease in loss without divergence or erratic behavior, unlike higher learning rates, especially 1e-1, which diverges from the start itself.
+                    \item[b.] Based on the loss curves, the optimal learning rate for training the model is \textbf{1e-3}, as it shows a steady decrease in loss without divergence or erratic behavior, unlike higher learning rates, especially 1e-1, which diverges from the start itself.
                 \end{itemize}
 
             \item \textbf{Batch size variations}
@@ -280,6 +280,44 @@ Chew and her friends were sad. They could not get the ball back. They went home 
                     }
                 \end{flushleft}
                 The output is very fluent. The model is able to generate coherent sentences and maintain a consistent narrative flow. Lower loss is generally one factor that correlates with better generation quality. Another factor is temperature provided while decoding the text. Changing temperature values, I noticed that higher temperature (e.g., 1.2) produced more diverse and creative outputs, while lower temperature (e.g., 0.5) resulted in more conservative and repetitive text.
+            \item \textbf{Remove RMSNorm and train}\\
+            Learning curve when rms norm is removed and trained at the previously found optimal learning rate of 1e-3 is given below:
+                \begin{center}
+                    \includegraphics[width=0.75\textwidth]{{../learning curves/no_norm_optimal_lr_curve.png}}
+
+                    \textit{Figure: Loss curve without RMSNorm at optimal learning rate of 1e-3.}
+                \end{center}
+                The loss curve without RMSNorm shows a much more erratic behavior compared to the original model with RMSNorm. The loss fluctuates significantly at the start indicating that the model is struggling to learn effectively without normalization. This highlights the importance of RMSNorm in stabilizing training and facilitating better convergence. The final loss after 5k iterations is around 2.4 which is much higher than the original model's final loss of around 2.0, indicating that the model without RMSNorm is not learning as effectively as the original model.\\\\
+                Running at lower learning rates (1e-4 and 1e-5) helped in steady decrease in loss, but the final loss after 5k iterations was still higher than the original model with RMSNorm, further confirming that RMSNorm plays a crucial role in the training process and helps the model converge to a better solution. The following plot shows the learning curves at different learning rates without RMSNorm (bs\_32 is the base model with rms norm and lr 1e-3 for reference):
+                \begin{center}
+                    \includegraphics[width=0.75\textwidth]{{../learning curves/no_norm_lower_lr_curve.png}}
+
+                    \textit{Figure: Loss curves without RMSNorm at lower learning rates.}
+                \end{center}
+            \item \textbf{Implement post-norm and train}\\
+                The learning curve for the model with post-norm vs our baseline model is given below:
+                \begin{center}
+                    \includegraphics[width=0.75\textwidth]{{../learning curves/post_norm_vs_pre_norm_curve.png}}
+
+                    \textit{Figure: Loss curve with post-norm at optimal learning rate of 1e-3.}
+                \end{center}
+                Both the models perform very similarly in terms of loss reduction. The post norm one seems to have a very slightly lesser loss at the end of 5k iterations and also in the val loss, but the difference is not that significant.
+            \item \textbf{Implement NoPE}\\
+                The learning curve for the model with NoPE vs our baseline model is given below:
+                \begin{center}
+                    \includegraphics[width=0.75\textwidth]{{../learning curves/nope_vs_rope_curve.png}}
+
+                    \textit{Figure: Loss curve with NoPE at optimal learning rate of 1e-3.}
+                \end{center}
+                The model with NoPE performs significantly worse than the baseline model with positional embeddings. The loss curve for the NoPE model shows a much higher loss throughout the training process, indicating that the model is struggling to learn effectively without positional information. This highlights the importance of positional embeddings in helping the model understand the order of tokens in the sequence, which is crucial for language modeling tasks.
+            \item \textbf{SwiGLU vs SiLU}
+                The learning curve for the model with SwiGLU vs our baseline model is given below:
+                \begin{center}
+                    \includegraphics[width=0.75\textwidth]{{../learning curves/swiglu_vs_silu_curve.png}}
+
+                    \textit{Figure: Loss curve with SwiGLU at optimal learning rate of 1e-3.}
+                \end{center}
+                The model with SwiGLU performs better than the baseline model with SiLU activation. The loss for SwiGLU is consistently lower than the SiLU model throughout the training process, indicating that SwiGLU is more effective in capturing complex patterns in the data and facilitating better learning compared to SiLU. This suggests that using SwiGLU as the activation function in the FFN layers can lead to improved performance in transformer language models.
         \end{enumerate}
 \end{enumerate}
 

@@ -41,6 +41,8 @@ def main() -> None:
             "--num-heads", str(args.num_heads),
             "--d-ff", str(args.d_ff),
             "--max-iters", str(args.max_iters),
+            "--warmup-iters", str(args.max_iters // 10),  # Set warmup to 10% of max iters
+            "--cosine-iters", str(args.max_iters),  # Set cosine decay to the full training duration
             "--batch-size", str(args.batch_size),
             "--eval-interval", str(args.eval_interval),
             "--eval-iters", str(args.eval_iters),
