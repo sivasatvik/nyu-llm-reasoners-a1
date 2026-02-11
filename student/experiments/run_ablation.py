@@ -30,7 +30,7 @@ def main() -> None:
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--log-dir", type=Path, default=Path("experiments/logs/ablations"))
     parser.add_argument("--checkpoint-dir", type=Path, default=Path("experiments/checkpoints/ablations"))
-    parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--lr", type=float, default=1e-3)
     args = parser.parse_args()
 
     base = [
