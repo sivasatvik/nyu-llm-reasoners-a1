@@ -55,7 +55,8 @@ def main() -> None:
     ]
 
     # Base (pre-norm, RoPE, SwiGLU)
-    run(base + ["--run-name", "base_pre_rope_swiglu", "--norm-type", "pre", "--ffn-type", "swiglu", "--use-rope"])
+    # Already run this config as part of the learning rate sweep and batch size sweep, so we can skip it here to save time. You can uncomment the line below to run it again if you want.
+    # run(base + ["--run-name", "base_pre_rope_swiglu", "--norm-type", "pre", "--ffn-type", "swiglu", "--use-rope"])
 
     # Remove RMSNorm - test varying learning rates
     for lr in [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]:
