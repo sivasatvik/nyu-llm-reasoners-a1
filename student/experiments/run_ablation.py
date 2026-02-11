@@ -33,43 +33,45 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=1e-3)
     args = parser.parse_args()
 
-    base = [
-        "python", "-m", "student.train_lm",
-        "--train-data", str(args.train_data),
-        "--val-data", str(args.val_data),
-        "--vocab-size", str(args.vocab_size),
-        "--context-length", str(args.context_length),
-        "--num-layers", str(args.num_layers),
-        "--d-model", str(args.d_model),
-        "--num-heads", str(args.num_heads),
-        "--d-ff", str(args.d_ff),
-        "--max-iters", str(args.max_iters),
-        "--batch-size", str(args.batch_size),
-        "--eval-interval", str(args.eval_interval),
-        "--eval-iters", str(args.eval_iters),
-        "--log-interval", str(args.log_interval),
-        "--lr", str(args.lr),
-        "--device", args.device,
-        "--log-dir", str(args.log_dir),
-        "--checkpoint-path", str(args.checkpoint_dir / "{run_name}"),
-    ]
+    def make_cmd(run_name: str, extra_args: list[str]) -> list[str]:
+        return [
+            "python", "-m", "student.train_lm",
+            "--train-data", str(args.train_data),
+            "--val-data", str(args.val_data),
+            "--vocab-size", str(args.vocab_size),
+            "--context-length", str(args.context_length),
+            "--num-layers", str(args.num_layers),
+            "--d-model", str(args.d_model),
+            "--num-heads", str(args.num_heads),
+            "--d-ff", str(args.d_ff),
+            "--max-iters", str(args.max_iters),
+            "--batch-size", str(args.batch_size),
+            "--eval-interval", str(args.eval_interval),
+            "--eval-iters", str(args.eval_iters),
+            "--log-interval", str(args.log_interval),
+            "--lr", str(args.lr),
+            "--device", args.device,
+            "--log-dir", str(args.log_dir),
+            "--run-name", run_name,
+            "--checkpoint-path", str(args.checkpoint_dir / run_name),
+        ] + extra_args
 
     # Base (pre-norm, RoPE, SwiGLU)
     # Already run this config as part of the learning rate sweep and batch size sweep, so we can skip it here to save time. You can uncomment the line below to run it again if you want.
-    # run(base + ["--run-name", "base_pre_rope_swiglu", "--norm-type", "pre", "--ffn-type", "swiglu", "--use-rope"])
+    # run(make_cmd("base_pre_rope_swiglu", ["--norm-type", "pre", "--ffn-type", "swiglu", "--use-rope"]))
 
     # Remove RMSNorm - test varying learning rates
     for lr in [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]:
-        run(base + ["--run-name", f"no_norm_lr{lr}", "--norm-type", "none", "--ffn-type", "swiglu", "--use-rope", "--lr", str(lr)])
+        run(make_cmd(f"no_norm_lr{lr}", ["--norm-type", "none", "--ffn-type", "swiglu", "--use-rope", "--lr", str(lr)]))
 
     # Post-norm
-    run(base + ["--run-name", "post_norm", "--norm-type", "post", "--ffn-type", "swiglu", "--use-rope"])
+    run(make_cmd("post_norm", ["--norm-type", "post", "--ffn-type", "swiglu", "--use-rope"]))
 
     # No position embedding (NoPE)
-    run(base + ["--run-name", "nope", "--norm-type", "pre", "--ffn-type", "swiglu", "--no-rope"])
+    run(make_cmd("nope", ["--norm-type", "pre", "--ffn-type", "swiglu", "--no-rope"]))
 
     # SwiGLU vs SiLU FFN
-    run(base + ["--run-name", "ffn_silu", "--norm-type", "pre", "--ffn-type", "silu", "--use-rope"])
+    run(make_cmd("ffn_silu", ["--norm-type", "pre", "--ffn-type", "silu", "--use-rope"]))
 
 
 if __name__ == "__main__":
