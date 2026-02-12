@@ -67,7 +67,7 @@
             \item \textbf{Experiments with tokenizers}
                 \begin{enumerate}[label=\alph*.]
                     \item The tokenizer's compression ratio (bytes/token) is around 2.6673 in a sample of 10 documents from TinyStories dataset.
-                    \item The throughput of the tokenizer is approximately 12862131.95 bytes/second. To tokenize the Pile dataset (about 825 GB), it would take around 178 hours (approximately 7.4 days).
+                    \item The throughput of the tokenizer is approximately 12862131.95 bytes/second. To tokenize the Pile dataset (about 825 GB), it would take around 17.9 hours.
                     \item uint16 is appropriate choice for encoding the token IDs since the vocabulary size is 10,000 which fits well within the range of uint16 (0 to $2^{16}-1 = 65535$).
                 \end{enumerate}
         \end{enumerate}
@@ -75,7 +75,7 @@
         \begin{enumerate}[label=\arabic*.]
             \item \textbf{Transformer LM resource accounting}
                 \begin{enumerate}[label=\alph*.]
-                    \item With the current implementation, GPT-2 XL has nearly 2,127,057,600 ($\approx$2.13B) trainable parameters. At 4 bytes (32 bit floating point) per parameter, this amounts to approximately 8.5 GB of memory just for model parameters.
+                    \item With the current implementation, GPT-2 XL has nearly \textbf{2,127,057,600 ($\approx$2.13B)} trainable parameters. At 4 bytes (32 bit floating point) per parameter, this amounts to approximately \textbf{8.5 GB} of memory just for model parameters.
                     \item Calculation is as follows:
                         \begin{itemize}
                             \item \textbf{Per Transformer Block (L = 48 in total)}
@@ -354,7 +354,7 @@ Chew and her friends were sad. They could not get the ball back. They went home 
                 \begin{center}
                     \includegraphics[width=0.75\textwidth]{{../learning curves/swiglu_vs_silu_curve.png}}
 
-                    \textit{Figure: Loss curve with SwiGLU vs SiLUat optimal learning rate of 1e-3.}
+                    \textit{Figure: Loss curve with SwiGLU vs SiLU at optimal learning rate of 1e-3.}
                 \end{center}
                 The model with SwiGLU performs better than the baseline model with SiLU activation. The loss for SwiGLU is consistently lower than the SiLU model throughout the training process, indicating that SwiGLU is more effective in capturing complex patterns in the data and facilitating better learning compared to SiLU. This suggests that using SwiGLU as the activation function in the FFN layers can lead to improved performance in transformer language models.
         \end{enumerate}
