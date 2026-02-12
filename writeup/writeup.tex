@@ -46,14 +46,14 @@
                 \end{enumerate}
             \item \textbf{Experiments with tokenizers}
                 \begin{enumerate}[label=\alph*.]
-                    \item The tokenizer's compression ratio (bytes/token) is around 2.6673in a sample of 10 documents from TinyStories dataset.
+                    \item The tokenizer's compression ratio (bytes/token) is around 2.6673 in a sample of 10 documents from TinyStories dataset.
                     \item The througput of the tokenizer is approximately 12862131.95 bytes/second. To tokenize the Pile dataset (about 825 GB), it would take around 178 hours (approximately 7.4 days).
                     \item uint16 is appropriate choice for encoding the token IDs since the vocabulary size is 10,000 which fits well within the range of uint16 (0 to $2^{16}-1 = 65535$).
                 \end{enumerate}
         \end{enumerate}
     \item \textbf{Transformer Language Model Architecture}
         \begin{enumerate}[label=\arabic*.]
-            \item Transformer LM resource accounting
+            \item \textbf{Transformer LM resource accounting}
                 \begin{enumerate}[label=\alph*.]
                     \item With the current implementation, GPT-2 XL has nearly 2,127,057,600 ($\approx$2.13B) trainable parameters. At 4 bytes (32 bit floating point) per parameter, this amounts to approximately 8.5 GB of memory just for model parameters.
                     \item Calculation is as follows:
@@ -243,11 +243,15 @@
                     \end{itemize}
                 \end{enumerate}
          \end{enumerate}
-    \item[6] \textbf{Generating text}
+    \item \textbf{Training loop}
+        \begin{itemize}
+            \item The training loop is implemented in the script located at \texttt{student/train.py}.
+        \end{itemize}
+    \item \textbf{Generating text}
         \begin{itemize}
             \item The decoding/generation script lives at \texttt{student/generate.py}.
         \end{itemize}
-    \item[7] \textbf{Experiments}
+    \item \textbf{Experiments}
         \begin{enumerate}[label=\arabic*.]
             \item \textbf{Tune the learning rate}
                 \begin{itemize}
@@ -257,17 +261,29 @@
 
                         \textit{Figure: Loss curves for different learning rates.}
                     \end{center}
-                    \item[b.] Based on the loss curves, the optimal learning rate for training the model is \textbf{1e-3}, as it shows a steady decrease in loss without divergence or erratic behavior, unlike higher learning rates, especially 1e-1, which diverges from the start itself.
+                    I ran the training with batch size of 256, the optmial learning rate of 1e-3 as seen from above experiments and with cosine learning rate decay schedule tip given in the document and I was able to get a model with final loss of around 1.3. The learning curve is as follows:
+                    \begin{center}
+                        \includegraphics[width=0.75\textwidth]{{../learning curves/model_with_loss_less_than_1_45_curve.png}}
+
+                        \textit{Figure: Loss curve for optimal learning rate of 1e-3.}
+                    \end{center}
+                    \item[b.]
+                    Based on the loss curves below, the optimal learning rate for training the model is \textbf{1e-3}, as it shows a steady decrease in loss without divergence or erratic behavior, unlike higher learning rates, especially 1e-1, which diverges from the start itself. Having higher learning rate (1e-1) results in divergence because the model takes too large steps in parameter space, overshooting the optimal minima and causing the loss to not decrease properly.
+                    \begin{center}
+                        \includegraphics[width=0.75\textwidth]{{../learning curves/lr_curve.png}}
+
+                        \textit{Figure: Loss curves with at least one divergent learning rate.}
+                    \end{center} 
                 \end{itemize}
 
             \item \textbf{Batch size variations}
-                The learning curve for different bath sizes is given below:
+                The learning curves for different batch sizes are given below:
                 \begin{center}
                     \includegraphics[width=0.75\textwidth]{{../learning curves/bs_curve.png}}
                     
                     \textit{Figure: Loss curves for different batch sizes.}
                 \end{center}
-                Batch size of 1 and 8 seemed erratic in training losses. But generally, as the batch sizes increase, the losses decrease more for the iterations trained. But at the same time, the training time per iteration also increases significantly. So there is a trade-off between faster convergence (in terms of iterations) and longer training time per iteration. Here, a batch size of 448 was the GPU memory limit so 256 batch size had the best performance in terms of loss reduction while still being able to train within a reasonable time frame.
+                Batch size of 1 and 8 seemed erratic in training losses. But generally, as the batch sizes increase, the losses decrease more for the iterations trained. But at the same time, the training time per iteration also increases significantly. So there is a trade-off between faster convergence (in terms of iterations) and longer training time per iteration. Here, a batch size of 448 was the GPU memory limit so 256 batch size had the best performance in terms of loss reduction while still being able to train within a reasonable time frame. Having higer batch sizes results in better loss reduction because it provides a more accurate estimate of the gradient, leading to more stable and effective updates. However, it also increases the training time per iteration due to the larger amount of data being processed in each step.
 
             \item \textbf{Generate text}\\
                 With the prompt as "Once upon a time, Siva", the text generated by 256 batch size model is as follows:
