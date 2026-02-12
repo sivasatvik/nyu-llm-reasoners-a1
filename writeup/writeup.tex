@@ -339,7 +339,7 @@ Chew and her friends were sad. They could not get the ball back. They went home 
 
                     \textit{Figure: Loss curve with post-norm vs pre-norm at optimal learning rate of 1e-3.}
                 \end{center}
-                Both the models perform very similarly in terms of loss reduction. The post norm one seems to have a very slightly lesser loss at the end of 5k iterations and also in the val loss, but the difference is not that significant.
+                Both the models perform very similarly in terms of loss reduction. The difference in the loss values for both the models is minimal throughout the training process, indicating that both pre-norm and post-norm architectures are effective in stabilizing training and facilitating convergence. This suggests that the choice between pre-norm and post-norm may not have a significant impact on the overall performance of the model, at least in terms of loss reduction during training. However, it's important to note that other factors such as training stability, convergence speed, and final model performance on downstream tasks may still be influenced by the choice of normalization strategy.
                 \newpage
             \item \textbf{Implement NoPE}\\
                 The learning curve for the model with NoPE vs our baseline model is given below:
