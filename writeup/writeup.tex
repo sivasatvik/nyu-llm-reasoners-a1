@@ -61,14 +61,14 @@
 % 539% cpu
 % 1:01.86 total
                         % \end{lstlisting}
-                    \item It seems that the longest token is `accomplishment' with a length of 15 bytes. The memory usage is around 158.3 MB and the training took approximately 61.72 seconds. It makes sense that longer tokens are formed from frequently occurring sequences of characters in the dataset, and `accomplishment' might be a common word in the TinyStories dataset.
-                    \item Pre-tokenization part took the most time (~40 seconds). Finding chunks and their word count seems to be the most time-consuming part of the process. Second highest is merging the tokens based on the pairs found (~20 seconds).
+                    \item It seems that the longest token is \textbf{`accomplishment'} with a length of \textbf{15 bytes}. The memory usage is around \textbf{158.3 MB} and the training took approximately \textbf{61.72 seconds}. It makes sense that longer tokens are formed from frequently occurring sequences of characters in the dataset, and `accomplishment' might be a common word in the TinyStories dataset.
+                    \item Pre-tokenization part took the most time ($\approx$\textbf{40 seconds}). Finding chunks and their word count seems to be the most time-consuming part of the process. Second highest is merging the tokens based on the pairs found ($\approx$\textbf{20 seconds}).
                 \end{enumerate}
             \item \textbf{Experiments with tokenizers}
                 \begin{enumerate}[label=\alph*.]
-                    \item The tokenizer's compression ratio (bytes/token) is around 2.6673 in a sample of 10 documents from TinyStories dataset.
-                    \item The throughput of the tokenizer is approximately 12862131.95 bytes/second. To tokenize the Pile dataset (about 825 GB), it would take around 17.9 hours.
-                    \item uint16 is appropriate choice for encoding the token IDs since the vocabulary size is 10,000 which fits well within the range of uint16 (0 to $2^{16}-1 = 65535$).
+                    \item The tokenizer's compression ratio (bytes/token) is around \textbf{2.6673} in a sample of 10 documents from TinyStories dataset.
+                    \item The throughput of the tokenizer is approximately \textbf{12862131.95 bytes/second}. To tokenize the Pile dataset (about 825 GB), it would take around \textbf{17.9 hours}.
+                    \item uint16 is appropriate choice for encoding the token IDs since the vocabulary size is 10,000 which fits \textbf{well within the range of uint16} (0 to $2^{16}-1 = 65535$).
                 \end{enumerate}
         \end{enumerate}
     \item \textbf{Transformer Language Model Architecture}
@@ -166,9 +166,9 @@
     \item \textbf{Training a Transformer LM}
          \begin{enumerate}[label=\arabic*.]
             \item \textbf{Tuning the learning rate}\\
-                With lr = 1e1, the loss keeps decaying properly. Initial iterations see a sharp drop in loss, and then it continues to decrease steadily and slowly.\\
-                With lr = 1e2, the loss keeps fluctuating and diverging. It starts with a sharp drop but then it increases and decreases erratically, indicating that the model is not converging properly.\\
-                With lr = 1e3, the loss diverges immediately and keeps increasing without any sign of convergence.
+                With lr = 1e1, the loss keeps decaying properly. Initial iterations see a sharp drop in loss, and then it continues to decrease steadily and slowly (final loss after 10 iterations is around \textbf{3.1}).\\
+                With lr = 1e2, the loss decreases very sharply and keeps decreasing substantially (final loss after 10 iterations is in the order of \textbf{1e-23}).\\
+                With lr = 1e3, the loss diverges immediately and keeps increasing without any sign of convergence (final loss after 10 iterations is in the order of \textbf{1e+18}).
                 % \begin{enumerate}[label=\alph*.]
                 %     \item a
                 % \end{enumerate}
